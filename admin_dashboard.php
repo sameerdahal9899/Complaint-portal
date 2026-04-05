@@ -2,10 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-ini_set('session.gc_maxlifetime', 86400); 
-ini_set('session.cookie_lifetime', 0);    
-
-session_start();
+require 'session_config.php'; // Centralized session configuration
 require 'db.php';
 
 if (!isset($_SESSION['user_id'])) {
@@ -31,6 +28,7 @@ $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Stats
 $total = count($complaints);
 $resolved = count(array_filter($complaints, fn($c) => $c['status'] === "Resolved"));
+$adminResolved = count(array_filter($complaints, fn($c) => $c['status'] === "Resolved from Admin"));
 $pending = count(array_filter($complaints, fn($c) => $c['status'] === "Pending"));
 $progress = count(array_filter($complaints, fn($c) => $c['status'] === "In Progress"));
 
@@ -48,65 +46,28 @@ foreach ($complaints as $c) {
   <meta charset="UTF-8">
   <title>Admin Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { margin:0; font-family:'Segoe UI', Arial, sans-serif; background:#f4f6f9; }
-    .sidebar {
-      position:fixed; top:0; left:-220px; width:220px; height:100%;
-      background:#0c4f97; color:white; padding-top:60px;
-      transition:left 0.4s ease; z-index:1000;
-    }
-    .sidebar.active { left:0; }
-    .sidebar a { display:block; padding:14px 20px; color:white; text-decoration:none; font-weight:bold; }
-    .sidebar a:hover, .sidebar a.active { background:#1a73e8; }
-    .hamburger {
-      position:fixed; top:20px; left:20px; font-size:28px;
-      color:#0c4f97; cursor:pointer; z-index:1001;
-      transition: color 0.3s ease;
-    }
-    .hamburger.active { color:white; }
-    .main { margin:40px 60px 100px 60px; padding:40px; transition:margin-left 0.4s ease; background:#fff; border-radius:12px; box-shadow:0 6px 12px rgba(0,0,0,0.1); }
-    .main.shifted { margin-left:280px; }
-    .stats { display:flex; gap:20px; margin-bottom:30px; flex-wrap:wrap; }
-    .card { flex:1; min-width:180px; padding:20px; border-radius:10px; color:white; text-align:center; box-shadow:0 6px 12px rgba(0,0,0,0.2); transition: transform 0.3s ease, filter 0.3s ease; cursor:pointer; }
-    .card:hover { transform:translateY(-5px); filter:brightness(1.1); }
-    .total { background:linear-gradient(135deg,#6c757d,#adb5bd); }
-    .resolved { background:linear-gradient(135deg,#28a745,#4caf50); }
-    .pending { background:linear-gradient(135deg,#ff9800,#ffb74d); }
-    .progress { background:linear-gradient(135deg,#0c4f97,#1a73e8); }
-    table { width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; margin-top:20px; }
-    th, td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
-    th { background:#0c4f97; color:white; }
-    .badge { padding:6px 12px; border-radius:6px; color:white; font-weight:bold; display:inline-block; white-space:nowrap; }
-    .badge.pending { background:#ff9800; }
-    .badge.resolved { background:#28a745; }
-    .badge.progress { background:#0c4f97; }
-    form { display:flex; gap:10px; }
-    select, button { padding:6px 10px; border-radius:6px; border:1px solid #ccc; }
-    button { background:#0c4f97; color:white; cursor:pointer; }
-    button:hover { background:#1a73e8; }
-    .charts { display:flex; gap:30px; flex-wrap:wrap; margin-top:30px; }
-    .chart-container { flex:1; min-width:300px; background:white; padding:20px; border-radius:10px; box-shadow:0 6px 12px rgba(0,0,0,0.2); }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- Hamburger -->
-  <div class="hamburger" onclick="toggleSidebar()">&#9776;</div>
+  <div class="hamburger admin" onclick="toggleSidebar()">&#9776;</div>
 
   <!-- Sidebar -->
-  <div class="sidebar" id="sidebar">
+  <div class="sidebar admin" id="sidebar">
     <a href="admin_dashboard.php" class="active">Dashboard</a>
     <a href="admin_all_complaints.php">All Complaints</a>
     <a href="logout.php">Logout</a>
   </div>
 
   <!-- Main Content -->
-  <div class="main" id="main">
+  <div class="main admin-main" id="main">
 
     <!-- Stats Cards -->
     <div class="stats">
       <div class="card total" onclick="filterTable('All')"><h3>Show All</h3><p><?= $total ?></p></div>
       <div class="card pending" onclick="filterTable('Pending')"><h3>Pending</h3><p><?= $pending ?></p></div>
       <div class="card progress" onclick="filterTable('In Progress')"><h3>In Progress</h3><p><?= $progress ?></p></div>
+      <div class="card admin-resolved" onclick="filterTable('Resolved from Admin')"><h3>Resolved from Admin</h3><p><?= $adminResolved ?></p></div>
       <div class="card resolved" onclick="filterTable('Resolved')"><h3>Resolved</h3><p><?= $resolved ?></p></div>
     </div>
 
@@ -159,23 +120,49 @@ foreach ($complaints as $c) {
 
   <script>
     function toggleSidebar() {
-      document.getElementById("sidebar").classList.toggle("active");
-      document.getElementById("main").classList.toggle("shifted");
-      document.querySelector(".hamburger").classList.toggle("active");
+      const sidebar = document.getElementById("sidebar");
+      const main = document.getElementById("main");
+      const hamburger = document.querySelector(".hamburger");
+      
+      sidebar.classList.toggle("active");
+      hamburger.classList.toggle("active");
+      main.classList.toggle("shifted");
+      // Save sidebar state to localStorage
+      localStorage.setItem("sidebarOpen", sidebar.classList.contains("active") ? "true" : "false");
     }
 
-    document.getElementById("main").addEventListener("click", function() {
-      if (document.getElementById("sidebar").classList.contains("active")) {
-        document.getElementById("sidebar").classList.remove("active");
-        document.getElementById("main").classList.remove("shifted");
-        document.querySelector(".hamburger").classList.remove("active");
+    // Restore sidebar state on page load
+    window.addEventListener("DOMContentLoaded", function() {
+      const sidebar = document.getElementById("sidebar");
+      const main = document.getElementById("main");
+      const hamburger = document.querySelector(".hamburger");
+      if (localStorage.getItem("sidebarOpen") === "true") {
+        sidebar.classList.add("active");
+        hamburger.classList.add("active");
+        main.classList.add("shifted");
       }
     });
 
-    // Filter table rows by status
+    // Close sidebar when clicking outside of it
+    document.addEventListener("click", function(e) {
+      const sidebar = document.getElementById("sidebar");
+      const main = document.getElementById("main");
+      const hamburger = document.querySelector(".hamburger");
+      
+      // If sidebar is open and click is outside sidebar and not on hamburger
+      if (sidebar.classList.contains("active") && 
+          !sidebar.contains(e.target) && 
+          !hamburger.contains(e.target)) {
+        sidebar.classList.remove("active");
+        hamburger.classList.remove("active");
+        main.classList.remove("shifted");
+        localStorage.setItem("sidebarOpen", "false");
+      }
+    });
+
     function filterTable(status) {
       const rows = document.querySelectorAll("#complaintsTable tr[data-status]");
-            rows.forEach(row => {
+      rows.forEach(row => {
         if (status === "All" || row.getAttribute("data-status") === status) {
           row.style.display = "";
         } else {
@@ -184,15 +171,14 @@ foreach ($complaints as $c) {
       });
     }
 
-    // Charts
     const statusCtx = document.getElementById('statusChart').getContext('2d');
     new Chart(statusCtx, {
       type: 'pie',
       data: {
-        labels: ['Pending','In Progress','Resolved'],
+        labels: ['Pending','In Progress','Resolved from Admin','Resolved'],
         datasets: [{
-          data: [<?= $pending ?>, <?= $progress ?>, <?= $resolved ?>],
-          backgroundColor: ['#ff9800','#0c4f97','#28a745']
+          data: [<?= $pending ?>, <?= $progress ?>, <?= $adminResolved ?>, <?= $resolved ?>],
+          backgroundColor: ['#ff9800','#0c4f97','#2e7d32','#28a745']
         }]
       }
     });
