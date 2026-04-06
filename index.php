@@ -20,9 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Redirect based on role
         if ($user['role'] === 'admin') {
-            header("Location: admin_dashboard.php");
+            header("Location: admin_dashboard.php?just_logged_in=1");
         } else {
-            header("Location: dashboard.php");
+            header("Location: dashboard.php?just_logged_in=1");
         }
         exit();
     } else {

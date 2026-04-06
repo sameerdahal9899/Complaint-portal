@@ -50,7 +50,7 @@ foreach ($complaints as $c) {
 </head>
 <body>
   <!-- Hamburger -->
-  <div class="hamburger admin" onclick="toggleSidebar()">&#9776;</div>
+  <div class="hamburger admin" id="hamburger">&#9776;</div>
 
   <!-- Sidebar -->
   <div class="sidebar admin" id="sidebar">
@@ -119,7 +119,8 @@ foreach ($complaints as $c) {
   </div>
 
   <script>
-    function toggleSidebar() {
+    function toggleSidebar(e) {
+      if (e) e.stopPropagation();
       const sidebar = document.getElementById("sidebar");
       const main = document.getElementById("main");
       const hamburger = document.querySelector(".hamburger");
@@ -131,33 +132,54 @@ foreach ($complaints as $c) {
       localStorage.setItem("sidebarOpen", sidebar.classList.contains("active") ? "true" : "false");
     }
 
-    // Restore sidebar state on page load
-    window.addEventListener("DOMContentLoaded", function() {
+    function closeSidebar() {
       const sidebar = document.getElementById("sidebar");
       const main = document.getElementById("main");
       const hamburger = document.querySelector(".hamburger");
+      sidebar.classList.remove("active");
+      hamburger.classList.remove("active");
+      main.classList.remove("shifted");
+      localStorage.setItem("sidebarOpen", "false");
+    }
+
+    // Initialize everything after DOM is ready
+    window.addEventListener("DOMContentLoaded", function() {
+      // Clear localStorage if user just logged in
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('just_logged_in')) {
+        localStorage.removeItem("sidebarOpen");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      const hamburger = document.querySelector(".hamburger");
+      const sidebar = document.getElementById("sidebar");
+      const main = document.getElementById("main");
+      
+      // Attach hamburger click listener
+      hamburger.addEventListener("click", toggleSidebar);
+      
+      // Close sidebar when clicking on sidebar links
+      const sidebarLinks = sidebar.querySelectorAll("a");
+      sidebarLinks.forEach(link => {
+        link.addEventListener("click", closeSidebar);
+      });
+      
+      // Restore sidebar state from localStorage
       if (localStorage.getItem("sidebarOpen") === "true") {
         sidebar.classList.add("active");
         hamburger.classList.add("active");
         main.classList.add("shifted");
       }
-    });
-
-    // Close sidebar when clicking outside of it
-    document.addEventListener("click", function(e) {
-      const sidebar = document.getElementById("sidebar");
-      const main = document.getElementById("main");
-      const hamburger = document.querySelector(".hamburger");
       
-      // If sidebar is open and click is outside sidebar and not on hamburger
-      if (sidebar.classList.contains("active") && 
-          !sidebar.contains(e.target) && 
-          !hamburger.contains(e.target)) {
-        sidebar.classList.remove("active");
-        hamburger.classList.remove("active");
-        main.classList.remove("shifted");
-        localStorage.setItem("sidebarOpen", "false");
-      }
+      // Close sidebar only when clicking on main content (not sidebar links)
+      main.addEventListener("click", function(e) {
+        // Don't close if click is on a sidebar link or inside sidebar
+        if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+          if (sidebar.classList.contains("active")) {
+            closeSidebar();
+          }
+        }
+      });
     });
 
     function filterTable(status) {

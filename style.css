@@ -11,6 +11,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 .bg-image {
   background: url('abc.png') no-repeat center center fixed;
@@ -96,15 +97,17 @@ textarea {
   height: 100%;
   background: rgba(255, 255, 255, 0.95);
   padding-top: 80px;
-  transition: left 0.4s ease;
+  transition: left 0.4s ease, box-shadow 0.4s ease;
   z-index: 1000;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  box-shadow: none;
+  overflow: hidden;
 }
 .sidebar.admin {
   width: 220px;
   background: #0c4f97;
   color: white;
   padding-top: 60px;
+  left: -220px;
 }
 .sidebar.admin a {
   display: block;
@@ -119,6 +122,10 @@ textarea {
   color: white;
 }
 .sidebar.active {
+  left: 0;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+}
+.sidebar.admin.active {
   left: 0;
 }
 .sidebar-close {
@@ -731,6 +738,45 @@ tr:hover {
   font-size: 40px;
   font-weight: bold;
   cursor: pointer;
+}
+.status-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.status-select:hover {
+  border-color: #0c4f97;
+  box-shadow: 0 0 5px rgba(12, 79, 151, 0.3);
+}
+.status-select:focus {
+  outline: none;
+  border-color: #0c4f97;
+  box-shadow: 0 0 8px rgba(12, 79, 151, 0.5);
+}
+.update-btn {
+  background: #0c4f97;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.update-btn:hover {
+  background: #1a73e8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(12, 79, 151, 0.4);
+}
+.update-btn:active {
+  transform: translateY(0);
 }
 @media (max-width: 768px) {
   .sidebar {

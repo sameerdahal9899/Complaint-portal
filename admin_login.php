@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         session_regenerate_id(true);
         $_SESSION['user_id'] = $admin['id'];
         $_SESSION['role'] = 'admin';
-        header("Location: admin_dashboard.php");
+        header("Location: admin_dashboard.php?just_logged_in=1");
         exit();
     } else {
         $error = "Invalid admin email or password.";

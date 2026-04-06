@@ -115,6 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #1a73e8;
         }
 
+        .hamburger.active {
+            color: #0c4f97;
+        }
+
         /* Sidebar Navigation */
         .sidebar {
             position: fixed;
@@ -124,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 100%;
             background: rgba(255, 255, 255, 0.95);
             padding-top: 80px;
-            transition: left 0.3s ease;
+            transition: left 0.4s ease;
             z-index: 1000;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.12);
             overflow-y: auto;
@@ -159,9 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             height: 100%;
             padding: 20px;
+            transition: margin-left 0.4s ease;
         }
-
-        /* Form Card */
         .form-card {
             background: rgba(255, 255, 255, 0.98);
             color: #333;
@@ -372,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="dashboard.php"><img src="logo.png" alt="Logo" class="logo"></a>
 
     <!-- Hamburger Menu -->
-    <div class="hamburger" onclick="toggleSidebar()">&#9776;</div>
+    <div class="hamburger" id="hamburger">&#9776;</div>
 
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
@@ -452,38 +455,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- JavaScript -->
     <script>
-        function toggleSidebar() {
+        function toggleSidebar(e) {
+            if (e) e.stopPropagation();
             const sidebar = document.getElementById("sidebar");
+            const main = document.getElementById("main");
             const hamburger = document.querySelector(".hamburger");
             sidebar.classList.toggle("active");
             hamburger.classList.toggle("active");
+            main.classList.toggle("shifted");
             // Save sidebar state to localStorage
             localStorage.setItem("sidebarOpen", sidebar.classList.contains("active") ? "true" : "false");
         }
 
-        // Restore sidebar state on page load
-        window.addEventListener("DOMContentLoaded", function() {
+        function closeSidebar() {
             const sidebar = document.getElementById("sidebar");
+            const main = document.getElementById("main");
             const hamburger = document.querySelector(".hamburger");
+            sidebar.classList.remove("active");
+            hamburger.classList.remove("active");
+            main.classList.remove("shifted");
+            localStorage.setItem("sidebarOpen", "false");
+        }
+
+        // Initialize everything after DOM is ready
+        window.addEventListener("DOMContentLoaded", function() {
+            // Clear localStorage if user just logged in
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('just_logged_in')) {
+                localStorage.removeItem("sidebarOpen");
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            const hamburger = document.querySelector(".hamburger");
+            const sidebar = document.getElementById("sidebar");
+            const main = document.getElementById("main");
+            
+            // Attach hamburger click listener
+            hamburger.addEventListener("click", toggleSidebar);
+            
+            // Close sidebar when clicking on sidebar links
+            const sidebarLinks = sidebar.querySelectorAll("a");
+            sidebarLinks.forEach(link => {
+                link.addEventListener("click", closeSidebar);
+            });
+            
+            // Restore sidebar state from localStorage
             if (localStorage.getItem("sidebarOpen") === "true") {
                 sidebar.classList.add("active");
                 hamburger.classList.add("active");
+                main.classList.add("shifted");
             }
-        });
-
-        // Close sidebar when clicking outside of it
-        document.addEventListener("click", function(e) {
-            const sidebar = document.getElementById("sidebar");
-            const hamburger = document.querySelector(".hamburger");
             
-            // If sidebar is open and click is outside sidebar and not on hamburger
-            if (sidebar.classList.contains("active") && 
-                !sidebar.contains(e.target) && 
-                !hamburger.contains(e.target)) {
-                sidebar.classList.remove("active");
-                hamburger.classList.remove("active");
-                localStorage.setItem("sidebarOpen", "false");
-            }
+            // Close sidebar only when clicking on main content (not sidebar links)
+            main.addEventListener("click", function(e) {
+                // Don't close if click is on a sidebar link or inside sidebar
+                if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                    if (sidebar.classList.contains("active")) {
+                        closeSidebar();
+                    }
+                }
+            });
         });
     </script>
 </body>

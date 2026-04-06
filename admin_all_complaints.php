@@ -97,7 +97,7 @@ if ($filter !== '' && $filter !== 'All') {
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="hamburger admin" onclick="toggleSidebar()">&#9776;</div>
+  <div class="hamburger admin" id="hamburger">&#9776;</div>
   <div class="sidebar admin" id="sidebar">
     <a href="admin_dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
     <a href="admin_all_complaints.php" class="active"><i class="fas fa-users"></i> All Complaints</a>
@@ -178,13 +178,12 @@ if ($filter !== '' && $filter !== 'All') {
             <form method="post" action="admin_all_complaints.php">
               <input type="hidden" name="complaint_id" value="<?= $c['id'] ?>">
               <input type="hidden" name="category" value="<?= htmlspecialchars($filter) ?>">
-              <select name="status" required>
-                <option value="">-- Select Status --</option>
+              <select name="status" class="status-select" required>
                 <option value="Pending" <?= $c['status']=="Pending"?"selected":"" ?>>Pending</option>
                 <option value="In Progress" <?= $c['status']=="In Progress"?"selected":"" ?>>In Progress</option>
                 <option value="Resolved" <?= ($c['status']=="Resolved from Admin" || $c['status']=="Resolved")?"selected":"" ?>>Resolved</option>
               </select>
-              <button type="submit" name="update_status" value="1">Update</button>
+              <button type="submit" name="update_status" value="1" class="update-btn">Update</button>
             </form>
           </td>
         </tr>
@@ -200,7 +199,8 @@ if ($filter !== '' && $filter !== 'All') {
   </div>
 
   <script>
-    function toggleSidebar() {
+    function toggleSidebar(e) {
+      if (e) e.stopPropagation();
       const sidebar = document.getElementById("sidebar");
       const main = document.getElementById("main");
       const hamburger = document.querySelector(".hamburger");
@@ -212,33 +212,54 @@ if ($filter !== '' && $filter !== 'All') {
       localStorage.setItem("sidebarOpen", sidebar.classList.contains("active") ? "true" : "false");
     }
 
-    // Restore sidebar state on page load
-    window.addEventListener("DOMContentLoaded", function() {
+    function closeSidebar() {
       const sidebar = document.getElementById("sidebar");
       const main = document.getElementById("main");
       const hamburger = document.querySelector(".hamburger");
+      sidebar.classList.remove("active");
+      hamburger.classList.remove("active");
+      main.classList.remove("shifted");
+      localStorage.setItem("sidebarOpen", "false");
+    }
+
+    // Initialize everything after DOM is ready
+    window.addEventListener("DOMContentLoaded", function() {
+      // Clear localStorage if user just logged in
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('just_logged_in')) {
+        localStorage.removeItem("sidebarOpen");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      const hamburger = document.querySelector(".hamburger");
+      const sidebar = document.getElementById("sidebar");
+      const main = document.getElementById("main");
+      
+      // Attach hamburger click listener
+      hamburger.addEventListener("click", toggleSidebar);
+      
+      // Close sidebar when clicking on sidebar links
+      const sidebarLinks = sidebar.querySelectorAll("a");
+      sidebarLinks.forEach(link => {
+        link.addEventListener("click", closeSidebar);
+      });
+      
+      // Restore sidebar state from localStorage
       if (localStorage.getItem("sidebarOpen") === "true") {
         sidebar.classList.add("active");
         hamburger.classList.add("active");
         main.classList.add("shifted");
       }
-    });
-
-    // Close sidebar when clicking outside of it
-    document.addEventListener("click", function(e) {
-      const sidebar = document.getElementById("sidebar");
-      const main = document.getElementById("main");
-      const hamburger = document.querySelector(".hamburger");
       
-      // If sidebar is open and click is outside sidebar and not on hamburger
-      if (sidebar.classList.contains("active") && 
-          !sidebar.contains(e.target) && 
-          !hamburger.contains(e.target)) {
-        sidebar.classList.remove("active");
-        hamburger.classList.remove("active");
-        main.classList.remove("shifted");
-        localStorage.setItem("sidebarOpen", "false");
-      }
+      // Close sidebar only when clicking on main content (not sidebar links)
+      main.addEventListener("click", function(e) {
+        // Don't close if click is on a sidebar link or inside sidebar
+        if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+          if (sidebar.classList.contains("active")) {
+            closeSidebar();
+          }
+        }
+      });
     });
 
     // ✅ Open modal with image
